@@ -4,8 +4,14 @@ import {Close} from "@element-plus/icons-vue";
 
 const repo:ModelRef<{
   title: string,
-  index_file_paths: string[],
-  lyric_file_paths: string[]
+  index_file_paths: {
+    href: string,
+    proxy: boolean
+  }[],
+  lyric_file_paths: {
+    href: string,
+    proxy: boolean
+  }[]
 }> = defineModel({required: true})
 
 const emit = defineEmits(['close'])
@@ -16,7 +22,7 @@ const new_data = ref({
     val: "",
     fun: (v:string)=>{
       if (v) {
-        repo.value.index_file_paths.push(v)
+        repo.value.index_file_paths.push({href: v, proxy: false})
         new_data.value.index_file_path.val = ""
       }
     }
@@ -25,7 +31,7 @@ const new_data = ref({
     val: "",
     fun: (v:string)=>{
       if (v && v.indexOf("[ttml]") != -1) {
-        repo.value.lyric_file_paths.push(v)
+        repo.value.lyric_file_paths.push({href: v, proxy: false})
         new_data.value.lyric_file_path.val = ""
       }
     }
@@ -46,19 +52,22 @@ const new_data = ref({
     <el-text size="large" tag="b" v-text="'索引文件'"/>
   </el-row>
   <el-row class="list" v-for="(index_file_path, index) in repo.index_file_paths" :key="index_file_path">
-    <span><el-button type="danger" :icon="Close" @click="repo.index_file_paths.splice(index, 1)" size="small" circle/></span>
-    <span><el-text v-text="index_file_path"/></span>
+    <el-button type="danger" :icon="Close" @click="repo.index_file_paths.splice(index, 1)" size="small" circle/>
+    <el-text v-text="index_file_path.href"/>
+    <el-switch v-model="index_file_path.proxy" active-text="代理开" inactive-text="代理关" inline-prompt/>
   </el-row>
-  <el-input v-model="new_data.index_file_path.val" @change="new_data.index_file_path.fun" clearable/>
+  <el-input v-model="new_data.index_file_path.val" @change="new_data.index_file_path.fun" placeholder="添加索引文件链接" clearable/>
   <el-divider/>
   <el-row>
     <el-text size="large" tag="b" v-text="'歌词文件'"/>
   </el-row>
   <el-row class="list" v-for="(lyric_file_path, index) in repo.lyric_file_paths" :key="lyric_file_path">
-    <span><el-button type="danger" :icon="Close" @click="repo.lyric_file_paths.splice(index, 1)" size="small" circle/></span>
-    <span><el-text v-text="lyric_file_path"/></span>
+    <el-button type="danger" :icon="Close" @click="repo.lyric_file_paths.splice(index, 1)" size="small" circle/>
+    <el-text v-text="lyric_file_path.href"/>
+    <el-switch v-model="lyric_file_path.proxy" active-text="代理开" inactive-text="代理关" inline-prompt/>
   </el-row>
-  <el-input v-model="new_data.lyric_file_path.val" @change="new_data.lyric_file_path.fun" clearable/>
+  <el-input v-model="new_data.lyric_file_path.val" @change="new_data.lyric_file_path.fun" placeholder="添加歌词文件链接模板" clearable/>
+  <el-text type="info">请用 <code>[ttml]</code> 作为文件名占位符</el-text>
 </el-card>
 </template>
 
@@ -69,8 +78,9 @@ const new_data = ref({
 
 .list {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 10px;
+  align-items: center;
   padding-top: 8px;
   padding-bottom: 8px;
 }
@@ -79,7 +89,7 @@ const new_data = ref({
   border-top: 1px solid var(--el-border-color);
 }
 
-.el-row:has(+ .list) > .el-text {
+.el-row:has(+ .list) > .el-text:only-child {
   border-bottom: 1px dashed var(--el-border-color);
   padding-bottom: 4px;
 }

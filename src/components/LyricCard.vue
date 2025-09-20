@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {ref} from "vue";
-import {escapeXmlForVHtml, getMetadatasFromTTML} from "../utils.ts";
 import {marked} from "marked";
 import {DocumentCopy, Download} from "@element-plus/icons-vue";
 import {writeText} from "@tauri-apps/plugin-clipboard-manager";
@@ -9,6 +8,10 @@ import { save } from '@tauri-apps/plugin-dialog'
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import {ElMessage} from "element-plus";
 import {downloadDir, join} from "@tauri-apps/api/path";
+import {escapeXmlForVHtml, getMetadatasFromTTML} from "../utils/ttmlT.ts";
+import {useConfigStore} from "../store/configStore.ts";
+
+const configStore = useConfigStore()
 
 const props = defineProps({
   ttml: {
@@ -21,7 +24,7 @@ const active_name = ref("")
 
 const save_ttml = async () => {
   const path = await save({
-    defaultPath: await join(await downloadDir(), props.ttml.rawLyricFile),
+    defaultPath: await join(configStore.download.default_path || await downloadDir(), props.ttml.rawLyricFile),
     filters: [
       {
         name: "ttml lyric file",

@@ -6,7 +6,6 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "cors-fetch:default",
     "dialog:allow-save",
     "dialog:default",
     "fs:default",

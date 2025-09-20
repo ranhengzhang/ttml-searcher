@@ -4,13 +4,19 @@ import {TTML} from "./types/ttml.ts";
 import {liveQuery, Subscription} from "dexie";
 import {db} from "./database";
 import {useRepoStore} from "./store/repoStore.ts";
-import {Plus, Refresh, Setting} from "@element-plus/icons-vue";
+import {FolderOpened, Plus, Refresh, Setting} from "@element-plus/icons-vue";
 import {ElMessage, ElNotification, ElProgress} from "element-plus";
-import {downloadContentFromUrls, downloadContentFromUrlTemplates, getBodyContentFromXml} from "./utils.ts";
+import {downloadContentFromUrls, downloadContentFromUrlTemplates} from "./utils/downloadT.ts";
 import LyricCard from "./components/LyricCard.vue";
 import RepoCard from "./components/RepoCard.vue";
+import {getLyricContentFromXml} from "./utils/ttmlT.ts";
+import {useConfigStore} from "./store/configStore.ts";
+import {open} from "@tauri-apps/plugin-dialog";
+import {downloadDir} from "@tauri-apps/api/path";
+import {logDanger} from "./utils/consoleT.ts";
 
 const repo_store = useRepoStore()
+const config_store = useConfigStore()
 
 const ttmls: Ref<TTML[]> = ref([])
 let ttmls_subscription: Subscription | null = null
@@ -47,7 +53,7 @@ watch(() => [search_config, ttmls], () => {
           filted_ttmls.value = ttmls.value
               .filter(ttml =>
                   Object.entries(search_config.value.metas)
-                      .every(meta => meta[1].length === 0 ? true : meta[1].every(meta_value => (JSON.parse(JSON.stringify(ttml))?.[meta[0]]??[]).indexOf(meta_value) !== -1))
+                      .every(meta => meta[1].length === 0 ? true : meta[1].every(meta_value => (JSON.parse(JSON.stringify(ttml))?.[meta[0]] ?? []).indexOf(meta_value) !== -1))
               )
         } else {
           const keywords = search_config.value.keyword.split(/\s/)
@@ -83,15 +89,15 @@ const setting_config = ref({
 
 const refresh = async () => {
   ElMessage.info("开始更新歌词文件")
-  await Promise.allSettled(repo_store.store.map(repo => {
+  for (const repo of repo_store.stores) {
     const notification = ElNotification({
       title: `正在下载 ${repo.title} 的索引文件`,
       message: '请稍等',
       duration: 0,
       showClose: false
     })
-    downloadContentFromUrls(repo.index_file_paths)
-        .then(async (content:string) => {
+    await downloadContentFromUrls(repo.index_file_paths)
+        .then(async (content: string) => {
           const lines = content.trim().split(/\r?\n/);
 
           // 我们将使用一个 ref 来跟踪已完成的下载任务数量
@@ -127,7 +133,7 @@ const refresh = async () => {
             return downloadContentFromUrlTemplates(repo.lyric_file_paths, "[ttml]", ttml["rawLyricFile"])
                 .then((file: string) => {
                   ttml["ttml"] = file;
-                  ttml["text"] = getBodyContentFromXml(file);
+                  ttml["text"] = getLyricContentFromXml(file);
                   db.ttmls.put(ttml);
                   recent.value++
                 })
@@ -135,13 +141,12 @@ const refresh = async () => {
                   downloadContentFromUrlTemplates(repo.lyric_file_paths, "[ttml]", ttml["rawLyricFile"])
                       .then((file: string) => {
                         ttml["ttml"] = file;
-                        ttml["text"] = getBodyContentFromXml(file);
+                        ttml["text"] = getLyricContentFromXml(file);
                         db.ttmls.put(ttml);
-                        recent.value++
                       })
                       .catch((e) => {
                         failed.push(ttml["rawLyricFile"])
-                        throw e
+                        logDanger(e)
                       })
                       .finally(() => {
                         recent.value++
@@ -151,23 +156,63 @@ const refresh = async () => {
 
           // 使用 Promise.all 等待所有 Promise 完成，无论成功或失败
           await Promise.allSettled(downloadPromises).then(() => {
+            ElMessage.success(`${repo.title} 更新完成`)
+
             // 在所有任务完成后，检查是否有失败的文件
             if (failed.length) {
               ElMessage.error(`${failed.length} 个文件下载失败`);
+              logDanger(failed)
             }
 
             notification1.close();
             ElMessage.info("下载结束")
           })
-        })
-        .catch((reason: any) => ElMessage.error(reason.message))
-        .finally(() => {
-          ElMessage.success(`${repo.title} 更新完成`)
+
           notification.close()
         })
-  }))
-      .catch((reason: any) => ElMessage.error(reason.message))
+        .catch((reason: any) => ElMessage.error(reason.message))
+  }
   ElMessage.info("所有库更新结束")
+}
+
+const reanalize = () => {
+  ttmls_subscription?.unsubscribe()
+  const recent = ref(0)
+  const notification = ElNotification({
+    title: '重新解析歌词文件',
+    message: () =>
+        h(ElProgress, {
+          percentage: (recent.value / ttmls.value.length) * 100,
+          striped: true,
+          format: () => `${recent.value} / ${ttmls.value.length}`,
+          stripedFlow: true
+        }),
+    duration: 0,
+    showClose: false
+  })
+  for (const ttml of ttmls.value) {
+    const new_ttml = JSON.parse(JSON.stringify(ttml))
+    new_ttml.text = getLyricContentFromXml(new_ttml.ttml)
+    db.ttmls.put(new_ttml)
+  }
+  notification.close()
+  ElMessage.info("重新解析结束")
+  ttmls_subscription = liveQuery(() => db.ttmls.toArray())
+      .subscribe({
+        next: (result) => {
+          ttmls.value = result.sort((a, b) => a.rawLyricFile < b.rawLyricFile ? 1 : -1)
+        }
+      })
+}
+
+const select_download_path = async () => {
+  const path = await open({
+    defaultPath: await downloadDir(),
+    directory: true
+  })
+  if (path) {
+    config_store.download.default_path = path
+  }
 }
 
 onMounted(() => {
@@ -195,6 +240,7 @@ onUnmounted(() => {
         </span>
         <span class="right">
           <el-button :icon="Refresh" plain type="primary" @click="refresh">刷新</el-button>
+          <el-button :icon="Refresh" plain type="success" @click="reanalize">重新解析</el-button>
         </span>
         <span class="right">
           <el-button :icon="Setting" circle type="primary" @click="setting_config.open"/>
@@ -204,7 +250,7 @@ onUnmounted(() => {
     <el-main>
       <el-row>
         <template v-if="search_config.pro_mod">
-          <el-form label-width="auto" inline>
+          <el-form inline label-width="auto">
             <el-form-item v-for="meta_key in Object.keys(search_config.metas)" :key="meta_key" :label="meta_key">
               <el-input-tag v-model="search_config.metas[meta_key]" clearable tag-effect="dark" tag-type="primary"/>
             </el-form-item>
@@ -223,13 +269,30 @@ onUnmounted(() => {
                      layout="prev, pager, next" size="large"/>
     </el-footer>
   </el-container>
-  <el-drawer v-model="setting_config.show_setting" size="35%" :show-close="false">
+  <el-drawer v-model="setting_config.show_setting" :show-close="false" size="700">
     <template #header>
-      <el-text tag="b" size="large">设置</el-text>
-      <el-button type="primary" @click="repo_store.$reset()" :icon="Refresh">重置</el-button>
+      <el-text size="large" tag="b">设置</el-text>
+      <el-button :icon="Refresh" type="primary" @click="()=>{repo_store.$reset(); config_store.$reset()}">重置
+      </el-button>
     </template>
-    <repo-card v-for="(_, index) in repo_store.store" :key="index" v-model="repo_store.store[index]" @close="repo_store.store.splice(index, 1)"/>
-    <el-button type="primary" :icon="Plus" style="width: 100%;" @click="repo_store.store.push({title: 'new repo', index_file_paths: [], lyric_file_paths: []})"/>
+    <el-row style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
+      <el-input v-model="config_store.download.default_path" clearable placeholder="默认保存目录"/>
+      <el-button :icon="FolderOpened" type="primary" @click="select_download_path"/>
+    </el-row>
+    <el-row style="display: grid; grid-template-columns: 1fr 4fr auto; gap: 8px;">
+      <el-select v-model="config_store.proxy.protocol" placeholder="协议">
+        <el-option label="socks5" :value="'socks5'"/>
+        <el-option label="socks4" :value="'socks4'"/>
+        <el-option label="https" :value="'https'"/>
+        <el-option label="http" :value="'http'"/>
+      </el-select>
+      <el-input v-model="config_store.proxy.ip"/>
+      <el-input-number v-model="config_store.proxy.port"/>
+    </el-row>
+    <repo-card v-for="(_, index) in repo_store.stores" :key="index" v-model="repo_store.stores[index]"
+               @close="repo_store.stores.splice(index, 1)"/>
+    <el-button :icon="Plus" style="width: 100%;" type="primary"
+               @click="repo_store.stores.push({title: 'new repo', index_file_paths: [], lyric_file_paths: []})"/>
   </el-drawer>
 </template>
 

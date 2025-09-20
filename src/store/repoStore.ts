@@ -1,27 +1,45 @@
 import {defineStore} from "pinia";
+
 export const useRepoStore = defineStore('repo', {
     persist: {
         key: 'repoStore',
         storage: localStorage
     },
     state: () => ({
-        store: [
+        stores: [
             {
                 title: "ttml-db",
                 index_file_paths: [
-                    "https://amll.mirror.dimeta.top/api/db/metadata/raw-lyrics-index.jsonl",
-                    "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/metadata/raw-lyrics-index.jsonl"
+                    {
+                        href: "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/metadata/raw-lyrics-index.jsonl",
+                        proxy: true
+                    }, {
+                        href: "https://amll.mirror.dimeta.top/api/db/metadata/raw-lyrics-index.jsonl",
+                        proxy: false
+                    }
                 ],
                 lyric_file_paths: [
-                    "https://amll.mirror.dimeta.top/api/db/raw-lyrics/[ttml]",
-                    "https://amlldb.bikonoo.com/raw-lyrics/[ttml]",
-                    "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/raw-lyrics/[ttml]"
+                    {
+                        href: "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/raw-lyrics/[ttml]",
+                        proxy: true
+                    }, {
+                        href: "https://amll.mirror.dimeta.top/api/db/raw-lyrics/[ttml]",
+                        proxy: false},
+                    {
+                        href: "https://amlldb.bikonoo.com/raw-lyrics/[ttml]",
+                        proxy: false}
                 ]
             }
         ] as {
             title: string,
-            index_file_paths: string[],
-            lyric_file_paths: string[]
+            index_file_paths: {
+                href: string,
+                proxy: boolean
+            }[],
+            lyric_file_paths: {
+                href: string,
+                proxy: boolean
+            }[]
         }[]
     })
 })
