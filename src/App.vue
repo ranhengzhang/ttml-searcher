@@ -253,7 +253,7 @@ onUnmounted(() => {
         <template v-if="search_config.pro_mod">
           <el-form inline label-width="auto">
             <el-form-item v-for="meta_key in Object.keys(search_config.metas)" :key="meta_key" :label="meta_key">
-              <el-input-tag v-model="search_config.metas[meta_key]" clearable tag-effect="dark" tag-type="primary"/>
+              <el-input-tag v-model="(search_config as any).metas[meta_key]" clearable tag-effect="dark" tag-type="primary"/>
             </el-form-item>
           </el-form>
         </template>
