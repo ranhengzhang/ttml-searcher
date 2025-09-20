@@ -60,7 +60,7 @@ watch(() => [search_config, ttmls], () => {
           filted_ttmls.value = ttmls.value
               .filter(ttml =>
                   keywords
-                      .every(keyword => JSON.stringify(ttml).indexOf(keyword) !== -1)
+                      .every(keyword => JSON.stringify(ttml).indexOf(keyword) !== -1))
               .map(ttml => {
                 let new_ttml = Object.assign({}, ttml)
                 keywords.forEach(keyword => {
