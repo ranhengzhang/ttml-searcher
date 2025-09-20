@@ -64,7 +64,7 @@ jobs:
           args: ${{ matrix.args }}
       - uses: actions/upload-artifact@v4
         with:
-          name: prompt-db
+          name: ttml-searcher
           path: |
             src-tauri/target/**/release/bundle/
             src-tauri/target/**/release/*.exe
