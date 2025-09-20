@@ -175,8 +175,7 @@ const refresh = async () => {
   ElMessage.info("所有库更新结束")
 }
 
-const reanalize = () => {
-  ttmls_subscription?.unsubscribe()
+const reanalize = async () => {
   const recent = ref(0)
   const notification = ElNotification({
     title: '重新解析歌词文件',
@@ -190,10 +189,12 @@ const reanalize = () => {
     duration: 0,
     showClose: false
   })
+  ttmls_subscription?.unsubscribe()
   for (const ttml of ttmls.value) {
     const new_ttml = JSON.parse(JSON.stringify(ttml))
     new_ttml.text = getLyricContentFromXml(new_ttml.ttml)
-    db.ttmls.put(new_ttml)
+    await db.ttmls.put(new_ttml)
+    recent.value++
   }
   notification.close()
   ElMessage.info("重新解析结束")
