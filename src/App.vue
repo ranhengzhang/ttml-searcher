@@ -13,7 +13,7 @@ import {getLyricContentFromXml} from "./utils/ttmlT.ts";
 import {useConfigStore} from "./store/configStore.ts";
 import {open} from "@tauri-apps/plugin-dialog";
 import {downloadDir} from "@tauri-apps/api/path";
-import {logDanger} from "./utils/consoleT.ts";
+import {logDanger, logWarning} from "./utils/consoleT.ts";
 
 const repo_store = useRepoStore()
 const config_store = useConfigStore()
@@ -60,7 +60,7 @@ watch(() => [search_config, ttmls], () => {
           filted_ttmls.value = ttmls.value
               .filter(ttml =>
                   keywords
-                      .every(keyword => ttml.ttml.indexOf(keyword) !== -1 || ttml.text.indexOf(keyword) !== -1))
+                      .every(keyword => ttml.ttml.indexOf(keyword) !== -1 || (ttml.text && ttml.text.indexOf(keyword) !== -1)))
               .map(ttml => {
                 let new_ttml = Object.assign({}, ttml)
                 keywords.forEach(keyword => {
@@ -134,6 +134,8 @@ const refresh = async () => {
                 .then((file: string) => {
                   ttml["ttml"] = file;
                   ttml["text"] = getLyricContentFromXml(file);
+                  if (ttml["text"] === null)
+                    logWarning("歌词文件解析失败", ttml["rawLyricFile"])
                   db.ttmls.put(ttml);
                   recent.value++
                 })
@@ -142,6 +144,8 @@ const refresh = async () => {
                       .then((file: string) => {
                         ttml["ttml"] = file;
                         ttml["text"] = getLyricContentFromXml(file);
+                        if (ttml["text"] === null)
+                          logWarning("歌词文件解析失败", ttml["rawLyricFile"])
                         db.ttmls.put(ttml);
                       })
                       .catch((e) => {
@@ -193,6 +197,8 @@ const reanalize = async () => {
   for (const ttml of ttmls.value) {
     const new_ttml = JSON.parse(JSON.stringify(ttml))
     new_ttml.text = getLyricContentFromXml(new_ttml.ttml)
+    if (new_ttml.text === null)
+      logWarning("歌词文件解析失败", ttml["rawLyricFile"])
     await db.ttmls.put(new_ttml)
     recent.value++
   }

@@ -12,12 +12,12 @@ export function getLyricContentFromXml(xmlString: string): string | null {
         const parser = new DOMParser();
 
         // 解析XML字符串
-        const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+        const xmlDoc = parser.parseFromString(xmlString.trim(), 'text/xml');
 
         // 检查解析过程中是否出现错误
         const parseError = xmlDoc.querySelector('parsererror');
         if (parseError) {
-            logDanger('XML parsing error:', parseError.textContent);
+            logDanger('XML parsing error:', parseError.textContent, xmlString);
             return null;
         }
 
