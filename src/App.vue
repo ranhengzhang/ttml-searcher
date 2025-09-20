@@ -89,6 +89,8 @@ const setting_config = ref({
 
 const refresh = async () => {
   ElMessage.info("开始更新歌词文件")
+
+  await db.ttmls.clear();
   for (const repo of repo_store.stores) {
     const notification = ElNotification({
       title: `正在下载 ${repo.title} 的索引文件`,
@@ -116,8 +118,6 @@ const refresh = async () => {
             duration: 0,
             showClose: false
           })
-
-          await db.ttmls.clear();
 
           // 创建一个 Promise 数组，每个 Promise 对应一个下载和数据库操作
           const downloadPromises = lines.map(async (line) => {
