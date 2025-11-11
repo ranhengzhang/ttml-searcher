@@ -90,7 +90,6 @@ const setting_config = ref({
 const refresh = async () => {
   ElMessage.info("开始更新歌词文件")
 
-  await db.ttmls.clear();
   for (const repo of repo_store.stores) {
     const notification = ElNotification({
       title: `正在下载 ${repo.title} 的索引文件`,
@@ -100,7 +99,11 @@ const refresh = async () => {
     })
     await downloadContentFromUrls(repo.index_file_paths)
         .then(async (content: string) => {
-          const lines = content.trim().split(/\r?\n/);
+          const lines = content.trim().split(/\r?\n/).filter((line)=>{
+            const ttml = JSON.parse(line);
+
+            return !ttmls.value.some(file=>file.rawLyricFile == ttml["rawLyricFile"])
+          });
 
           // 我们将使用一个 ref 来跟踪已完成的下载任务数量
           const recent = ref(0);
@@ -234,6 +237,20 @@ onMounted(() => {
 onUnmounted(() => {
   ttmls_subscription?.unsubscribe()
 })
+
+const redownload = async (fileName:string) => {
+  ElMessage.info(`开始下载 ${fileName}`)
+  await downloadContentFromUrlTemplates(repo_store.stores.map(_store=>_store.lyric_file_paths).flat(), "[ttml]", fileName)
+      .then((file: string) => {
+        const content = getLyricContentFromXml(file)
+        if (content === null) {
+          logWarning("歌词文件解析失败", fileName)
+          return
+        }
+        db.ttmls.update(fileName, {ttml: file, text: content})
+        ElMessage.success(`${fileName} 下载成功`)
+      })
+}
 </script>
 
 <template>
@@ -268,7 +285,7 @@ onUnmounted(() => {
         </template>
       </el-row>
       <el-empty v-if="list_ttmls.length == 0"/>
-      <lyric-card v-for="ttml in list_ttmls" :key="ttml.rawLyricFile" :ttml="ttml"/>
+      <lyric-card v-for="ttml in list_ttmls" :key="ttml.rawLyricFile" :ttml="ttml" @redownlaod="redownload"/>
     </el-main>
     <el-footer>
       <el-pagination v-model:current-page="recent_index" :page-count="Math.ceil(filted_ttmls.length/20)" background

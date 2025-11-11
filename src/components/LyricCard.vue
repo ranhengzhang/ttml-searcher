@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {ref} from "vue";
 import {marked} from "marked";
-import {DocumentCopy, Download} from "@element-plus/icons-vue";
+import {DocumentCopy, Download, Refresh} from "@element-plus/icons-vue";
 import {writeText} from "@tauri-apps/plugin-clipboard-manager";
 import {db} from "../database";
 import { save } from '@tauri-apps/plugin-dialog'
@@ -19,6 +19,8 @@ const props = defineProps({
     required: true
   }
 })
+
+const emit = defineEmits(["redownlaod"])
 
 const active_name = ref("")
 
@@ -39,6 +41,15 @@ const save_ttml = async () => {
 const copy_ttml = () => {
   db.ttmls.get(props.ttml.rawLyricFile).then(async (v)=>writeText((v?.ttml) ?? "").then(()=>ElMessage.success("复制成功")))
 }
+
+marked.use({
+  tokenizer: {
+    url(_src) {
+      // disable gfm autolinks
+      return undefined
+    },
+  },
+});
 </script>
 
 <template>
@@ -46,6 +57,7 @@ const copy_ttml = () => {
     <template #header>
       <el-text>{{ props.ttml.rawLyricFile }}</el-text>
       <el-col>
+        <el-button type="info" :icon="Refresh" @click="emit('redownlaod', props.ttml.rawLyricFile)" circle/>
         <el-button type="success" :icon="Download" @click="save_ttml" circle/>
         <el-button type="primary" :icon="DocumentCopy" @click="copy_ttml" circle/>
       </el-col>
@@ -61,7 +73,7 @@ const copy_ttml = () => {
     <template #footer>
       <el-row style="gap: 6px;">
         <el-tag v-for="(meta, index) in getMetadatasFromTTML(props.ttml.ttml)" :key="index" type="primary" size="large">
-          {{ `${meta.key}: ${meta.val}` }}
+          <span v-html="marked(escapeXmlForVHtml(`${meta.key}: ${meta.val}`))"/>
         </el-tag>
       </el-row>
     </template>
@@ -70,7 +82,7 @@ const copy_ttml = () => {
 
 <style scoped>
 .el-tag {
-  height: unset;
+  /* height: unset; */
   padding: 6px;
 }
 
