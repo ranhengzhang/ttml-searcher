@@ -45,36 +45,52 @@ const list_ttmls: Ref<TTML[]> = ref([])
 let search_timer: number | null = null
 
 watch(() => [search_config, ttmls], () => {
-      filted_ttmls.value = []
-      if (search_timer)
-        clearTimeout(search_timer)
-      search_timer = setTimeout(() => {
-        if (search_config.value.pro_mod) {
-          filted_ttmls.value = ttmls.value
-              .filter(ttml =>
-                  Object.entries(search_config.value.metas)
-                      .every(meta => meta[1].length === 0 ? true : meta[1].every(meta_value => (JSON.parse(JSON.stringify(ttml))?.[meta[0]] ?? []).indexOf(meta_value) !== -1))
-              )
-        } else {
-          const keywords = search_config.value.keyword.split(/\s/)
-          filted_ttmls.value = ttmls.value
-              .filter(ttml =>
-                  keywords
-                      .every(keyword => JSON.stringify(ttml).indexOf(keyword) !== -1))
-              .map(ttml => {
-                let new_ttml = Object.assign({}, ttml)
-                keywords.forEach(keyword => {
-                  if (keyword) {
-                    new_ttml.ttml = ttml.ttml.replace(keyword, `**${keyword}**`)
-                    new_ttml.text = ttml.text.replace(keyword, `**${keyword}**`)
-                  }
-                })
-                return new_ttml
-              })
-        }
-      }, 500)
-    },
-    {deep: true, immediate: true})
+  filted_ttmls.value = []
+  if (search_timer)
+    clearTimeout(search_timer)
+  search_timer = setTimeout(() => {
+    if (search_config.value.pro_mod) {
+      filted_ttmls.value = ttmls.value
+          .filter(ttml =>
+              Object.entries(search_config.value.metas)
+                  .every(meta => meta[1].length === 0 ? true : meta[1].every(meta_value => (JSON.parse(JSON.stringify(ttml))?.[meta[0]] ?? []).indexOf(meta_value) !== -1))
+          )
+    } else {
+      const keywords = search_config.value.keyword.split(/\s/)
+      filted_ttmls.value = ttmls.value
+          .filter(ttml =>
+              // 这里保持不变，筛选包含所有关键词的项目
+              keywords.every(keyword => JSON.stringify(ttml).indexOf(keyword) !== -1)
+          )
+          .map(ttml => {
+            // 浅拷贝对象
+            let new_ttml = Object.assign({}, ttml)
+
+            keywords.forEach(keyword => {
+              if (keyword) {
+                // --- 修改重点 ---
+                // 1. 读取 new_ttml (当前状态) 而不是 ttml (原始状态)
+                // 2. 建议使用 split+join 或 replaceAll 来替换所有出现的关键词，而不仅仅是第一个
+
+                // 处理 ttml 字段
+                new_ttml.ttml = new_ttml.ttml.split(keyword).join(`**${keyword}**`)
+
+                // 处理 text 字段
+                new_ttml.text = new_ttml.text.split(keyword).join(`**${keyword}**`)
+
+                // 如果你的环境支持 ES2021，也可以写成:
+                // new_ttml.text = new_ttml.text.replaceAll(keyword, `**${keyword}**`)
+              }
+            })
+            return new_ttml
+          })
+    }
+  }, 500)
+}, {
+  deep: true,
+  immediate: true
+})
+
 
 watch(() => [recent_index, filted_ttmls], () => {
   list_ttmls.value = filted_ttmls.value.slice((recent_index.value - 1) * 20, recent_index.value * 20)
