@@ -4,11 +4,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
-// @ts-expect-error process is a nodejs global
-const host = process.env.TAURI_DEV_HOST;
-
-// https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
       vue(),
       AutoImport({
@@ -18,26 +14,55 @@ export default defineConfig(async () => ({
           resolvers: [ElementPlusResolver()],
       })
   ],
-
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
-  clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+    proxy: {
+      '/api/proxy': {
+        target: 'http://localhost:1420',
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            const url = new URL(req.url || '', 'http://localhost:1420')
+            const targetUrl = url.searchParams.get('url')
+            if (targetUrl) {
+              proxyReq.setHeader('host', new URL(targetUrl).host)
+            }
+          })
+        },
+        bypass: async (req, res, options) => {
+          const url = new URL(req.url || '', 'http://localhost:1420')
+          const targetUrl = url.searchParams.get('url')
+          
+          if (!targetUrl) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Missing url parameter' }))
+            return false
+          }
+
+          try {
+            const decodedUrl = decodeURIComponent(targetUrl)
+            const response = await fetch(decodedUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              },
+            })
+            const content = await response.text()
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({
+              status_code: response.status,
+              content: content,
+            }))
+          } catch (error: any) {
+            res.statusCode = 500
+            res.end(JSON.stringify({
+              status_code: 0,
+              content: `Request error: ${error.message}`,
+            }))
+          }
+          return false
+        },
+      },
     },
   },
-}));
+});
