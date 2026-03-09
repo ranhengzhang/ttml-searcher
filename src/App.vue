@@ -11,8 +11,7 @@ import LyricCard from "./components/LyricCard.vue";
 import RepoCard from "./components/RepoCard.vue";
 import {getLyricContentFromXml} from "./utils/ttmlT.ts";
 import {useConfigStore} from "./store/configStore.ts";
-import {open} from "@tauri-apps/plugin-dialog";
-import {downloadDir} from "@tauri-apps/api/path";
+import {open, downloadDir} from "./utils/tauriCompat.ts";
 import {logDanger, logWarning} from "./utils/consoleT.ts";
 
 const repo_store = useRepoStore()
