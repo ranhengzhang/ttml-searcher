@@ -1,8 +1,3 @@
-interface FetchResponse {
-    status_code: number;
-    content: string;
-}
-
 function getProxiedUrl(url: string): string {
     return `/api/proxy?url=${encodeURIComponent(url)}`
 }
@@ -63,7 +58,16 @@ export async function join(...paths: string[]): Promise<string> {
     return paths.join('/')
 }
 
-export async function open(options?: { multiple?: boolean; filters?: Array<{ name: string; extensions: string[] }> }): Promise<string | string[] | null> {
+export async function open(options?: { 
+    multiple?: boolean
+    directory?: boolean
+    defaultPath?: string
+    filters?: Array<{ name: string; extensions: string[] }> 
+}): Promise<string | null> {
+    if (options?.directory) {
+        return options.defaultPath || null
+    }
+    
     return new Promise((resolve) => {
         const input = document.createElement('input')
         input.type = 'file'
@@ -82,7 +86,7 @@ export async function open(options?: { multiple?: boolean; filters?: Array<{ nam
             }
 
             if (options?.multiple) {
-                resolve(Array.from(files).map(f => f.name))
+                resolve(Array.from(files).map(f => f.name).join(','))
             } else {
                 resolve(files[0].name)
             }
