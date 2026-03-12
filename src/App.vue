@@ -269,73 +269,103 @@ const redownload = async (fileName:string) => {
 </script>
 
 <template>
-  <el-container>
-    <el-header>
+  <el-container class="app-container">
+    <el-header class="app-header">
       <el-row class="controllers">
         <span class="left">
-          <el-switch v-model="search_config.pro_mod" active-text="精准搜索" inactive-text="模糊搜索"
-                     inline-prompt size="large"
+          <el-switch v-model="search_config.pro_mod" active-text="精准" inactive-text="模糊"
+                     inline-prompt size="default"
                      style="--el-switch-on-color: var(--el-color-success); --el-switch-off-color: var(--el-color-primary);"/>
         </span>
-        <span class="right">
-          <el-button :icon="Refresh" plain type="primary" @click="refresh">刷新</el-button>
-          <el-button :icon="Refresh" plain type="success" @click="reanalize">重新解析</el-button>
-        </span>
-        <span class="right">
-          <el-button :icon="Setting" circle type="primary" @click="setting_config.open"/>
+        <span class="right mobile-actions">
+          <el-button :icon="Refresh" plain type="primary" @click="refresh" class="mobile-btn">
+            <span class="btn-text">刷新</span>
+          </el-button>
+          <el-button :icon="Refresh" plain type="success" @click="reanalize" class="mobile-btn">
+            <span class="btn-text">解析</span>
+          </el-button>
+          <el-button :icon="Setting" circle type="primary" @click="setting_config.open" class="mobile-btn"/>
         </span>
       </el-row>
     </el-header>
-    <el-main>
-      <el-row>
+    <el-main class="app-main">
+      <el-row class="search-row">
         <template v-if="search_config.pro_mod">
-          <el-form inline label-width="auto">
-            <el-form-item v-for="meta_key in Object.keys(search_config.metas)" :key="meta_key" :label="meta_key">
-              <el-input-tag v-model="(search_config as any).metas[meta_key]" clearable tag-effect="dark" tag-type="primary"/>
+          <el-form inline label-width="auto" class="mobile-form">
+            <el-form-item v-for="meta_key in Object.keys(search_config.metas)" :key="meta_key" :label="meta_key" class="mobile-form-item">
+              <el-input-tag v-model="(search_config as any).metas[meta_key]" clearable tag-effect="dark" tag-type="primary" class="mobile-input-tag"/>
             </el-form-item>
           </el-form>
         </template>
         <template v-else>
-          <el-input v-model="search_config.keyword" clearable placeholder="请输入内容"/>
+          <el-input v-model="search_config.keyword" clearable placeholder="请输入内容" class="mobile-search-input"/>
         </template>
       </el-row>
       <el-empty v-if="list_ttmls.length == 0"/>
-      <lyric-card v-for="ttml in list_ttmls" :key="ttml.rawLyricFile" :ttml="ttml" @redownlaod="redownload"/>
+      <div class="lyric-list">
+        <lyric-card v-for="ttml in list_ttmls" :key="ttml.rawLyricFile" :ttml="ttml" @redownlaod="redownload"/>
+      </div>
     </el-main>
-    <el-footer>
+    <el-footer class="app-footer">
       <el-pagination v-model:current-page="recent_index" :page-count="Math.ceil(filted_ttmls.length/20)" background
                      hide-on-single-page
-                     layout="prev, pager, next" size="large"/>
+                     layout="prev, pager, next" size="small" class="mobile-pagination"/>
     </el-footer>
   </el-container>
-  <el-drawer v-model="setting_config.show_setting" :show-close="false" size="700">
+  <el-drawer v-model="setting_config.show_setting" :show-close="false" :size="isMobile ? '90%' : '700'" class="settings-drawer">
     <template #header>
       <el-text size="large" tag="b">设置</el-text>
       <el-button :icon="Refresh" type="primary" @click="()=>{repo_store.$reset(); config_store.$reset()}">重置
       </el-button>
     </template>
-    <el-row style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
-      <el-input v-model="config_store.download.default_path" clearable placeholder="默认保存目录"/>
+    <el-row class="settings-row mobile-settings-row">
+      <el-input v-model="config_store.download.default_path" clearable placeholder="默认保存目录" class="mobile-settings-input"/>
       <el-button :icon="FolderOpened" type="primary" @click="select_download_path"/>
     </el-row>
-    <el-row style="display: grid; grid-template-columns: 1fr 4fr auto; gap: 8px;">
-      <el-select v-model="config_store.proxy.protocol" placeholder="协议">
+    <el-row class="settings-row proxy-row">
+      <el-select v-model="config_store.proxy.protocol" placeholder="协议" class="mobile-select">
         <el-option label="socks5" :value="'socks5'"/>
         <el-option label="socks4" :value="'socks4'"/>
         <el-option label="https" :value="'https'"/>
         <el-option label="http" :value="'http'"/>
       </el-select>
-      <el-input v-model="config_store.proxy.ip"/>
-      <el-input-number v-model="config_store.proxy.port"/>
+      <el-input v-model="config_store.proxy.ip" class="mobile-proxy-input"/>
+      <el-input-number v-model="config_store.proxy.port" class="mobile-port-input"/>
     </el-row>
     <repo-card v-for="(_, index) in repo_store.stores" :key="index" v-model="repo_store.stores[index]"
                @close="repo_store.stores.splice(index, 1)"/>
-    <el-button :icon="Plus" style="width: 100%;" type="primary"
+    <el-button :icon="Plus" style="width: 100%; margin-top: 16px;" type="primary"
                @click="repo_store.stores.push({title: 'new repo', index_file_paths: [], lyric_file_paths: []})"/>
   </el-drawer>
 </template>
 
+<script lang="ts">
+const isMobile = window.innerWidth <= 768
+window.addEventListener('resize', () => {
+  (window as any).isMobile = window.innerWidth <= 768
+})
+</script>
+
 <style scoped>
+.app-container {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  padding: 12px 20px;
+  height: auto !important;
+}
+
+.app-main {
+  padding: 12px;
+}
+
+.app-footer {
+  padding: 12px;
+  height: auto !important;
+}
+
 .el-row:not(:last-child) {
   margin-bottom: 10px;
 }
@@ -344,41 +374,172 @@ const redownload = async (fileName:string) => {
   margin-bottom: 20px;
 }
 
-.el-header {
-  display: flex;
-
-}
-
 .el-pagination {
   justify-content: center;
 }
 
 .controllers {
-  /* 启用 Flexbox 布局 */
   display: flex;
-  /* 子元素在主轴（水平方向）上对齐，左侧靠左，右侧靠右 */
   justify-content: space-between;
-  /* 可选：如果子元素高度不同，让它们顶部对齐 */
-  align-items: center; /* 使用 center 更适合按钮和开关的垂直居中 */
-  width: 100%; /* 确保 el-row 占据可用宽度 */
+  align-items: center;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .left {
-  /* 让左侧部分（Switch）占据一部分空间，并允许其收缩 */
-  flex-shrink: 0; /* 防止左侧内容（如 switch）被压缩 */
-  /* 如果需要左侧固定宽度，可以设置 width: 150px; (示例) */
+  flex-shrink: 0;
 }
 
 .right {
-  /* 让右侧部分（Buttons）占据剩余空间，并允许其收缩 */
-  text-align: right; /* 将右侧按钮靠右对齐 */
-  margin-left: auto; /* 另一种将右侧内容推到最右边的方法 */
+  text-align: right;
+  margin-left: auto;
 }
 
-/* 如果右侧有多个 .right 元素，并且你想让它们紧挨着 */
 .controllers .right + .right {
-  margin-left: 10px; /* 在右侧元素之间添加一些间距 */
+  margin-left: 10px;
 }
-</style>
-<style>
+
+.search-row {
+  margin-bottom: 16px;
+}
+
+.lyric-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.proxy-row {
+  grid-template-columns: 1fr 3fr auto;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .app-header {
+    padding: 8px 12px;
+  }
+
+  .app-main {
+    padding: 8px;
+  }
+
+  .controllers {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .mobile-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .mobile-btn {
+    padding: 6px 8px;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
+  .mobile-btn .btn-text {
+    display: inline;
+    margin-left: 4px;
+  }
+
+  @media screen and (max-width: 480px) {
+    .btn-text {
+      display: none !important;
+    }
+    
+    .mobile-btn {
+      padding: 6px !important;
+    }
+  }
+
+  .mobile-search-input {
+    width: 100%;
+  }
+
+  .mobile-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .mobile-form-item {
+    margin-bottom: 8px;
+    margin-right: 0;
+  }
+
+  .mobile-form-item :deep(.el-form-item__label) {
+    width: 100px !important;
+    font-size: 12px;
+  }
+
+  .mobile-input-tag {
+    width: 100%;
+  }
+
+  .mobile-pagination {
+    --el-pagination-button-width: 28px;
+    --el-pagination-button-height: 28px;
+  }
+
+  .mobile-pagination :deep(.el-pager li) {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+    font-size: 12px;
+  }
+
+  .mobile-settings-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .proxy-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .mobile-select,
+  .mobile-proxy-input,
+  .mobile-port-input {
+    width: 100%;
+  }
+
+  .mobile-port-input :deep(.el-input__wrapper) {
+    width: 100%;
+  }
+}
+
+/* 平板适配 */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .app-main {
+    padding: 16px;
+  }
+
+  .lyric-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+/* 桌面端 */
+@media screen and (min-width: 1025px) {
+  .lyric-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
 </style>
