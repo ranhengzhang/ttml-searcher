@@ -11,7 +11,7 @@ import LyricCard from "./components/LyricCard.vue";
 import RepoCard from "./components/RepoCard.vue";
 import {getLyricContentFromXml} from "./utils/ttmlT.ts";
 import {useConfigStore} from "./store/configStore.ts";
-import {open, downloadDir} from "./utils/tauriCompat.ts";
+import {open, downloadDir} from "./utils/webCompat.ts";
 import {logDanger, logWarning} from "./utils/consoleT.ts";
 
 const repo_store = useRepoStore()
@@ -114,13 +114,26 @@ const refresh = async () => {
     })
     await downloadContentFromUrls(repo.index_file_paths)
         .then(async (content: string) => {
-          const lines = content.trim().split(/\r?\n/).filter((line)=>{
-            const ttml = JSON.parse(line);
+          notification.close()
 
-            return !ttmls.value.some(file=>file.rawLyricFile == ttml["rawLyricFile"])
-          });
+          const allLines = content.trim().split(/\r?\n/);
+          const lines: string[] = [];
+
+          for (const line of allLines) {
+            const ttml = JSON.parse(line);
+            const rawLyricFile = ttml["rawLyricFile"];
+
+            // 检查 IndexedDB 中是否存在
+            const existing = await db.ttmls.get(rawLyricFile);
+            if (!existing) {
+              lines.push(line);
+            }
+          }
 
           // 我们将使用一个 ref 来跟踪已完成的下载任务数量
+
+          console.log(lines.length)
+
           const recent = ref(0);
           const failed: string[] = [];
 
@@ -189,8 +202,6 @@ const refresh = async () => {
             notification1.close();
             ElMessage.info("下载结束")
           })
-
-          notification.close()
         })
         .catch((reason: any) => ElMessage.error(reason.message))
   }

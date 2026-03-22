@@ -2,7 +2,7 @@
 import {ref} from "vue";
 import {marked} from "marked";
 import {DocumentCopy, Download, Refresh} from "@element-plus/icons-vue";
-import {writeText, save, writeTextFile, downloadDir, join} from "../utils/tauriCompat.ts";
+import {writeText, save, writeTextFile, downloadDir, join} from "../utils/webCompat.ts";
 import {db} from "../database";
 import {ElMessage} from "element-plus";
 import {escapeXmlForVHtml, getMetadatasFromTTML} from "../utils/ttmlT.ts";
